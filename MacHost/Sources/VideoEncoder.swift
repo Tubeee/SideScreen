@@ -238,7 +238,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                 for i in 0..<parameterSetCount {
                     var parameterSetPointer: UnsafePointer<UInt8>?
                     var parameterSetSize: Int = 0
-                    CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+                    let paramStatus = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
                         formatDescription,
                         parameterSetIndex: i,
                         parameterSetPointerOut: &parameterSetPointer,
@@ -246,6 +246,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                         parameterSetCountOut: nil,
                         nalUnitHeaderLengthOut: nil
                     )
+                    guard paramStatus == noErr else { continue }
 
                     if let pointer = parameterSetPointer {
                         frameData.append(contentsOf: nalStartCode)
@@ -268,7 +269,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                 for i in 0..<parameterSetCount {
                     var parameterSetPointer: UnsafePointer<UInt8>?
                     var parameterSetSize: Int = 0
-                    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                    let paramStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
                         formatDescription,
                         parameterSetIndex: i,
                         parameterSetPointerOut: &parameterSetPointer,
@@ -276,6 +277,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                         parameterSetCountOut: nil,
                         nalUnitHeaderLengthOut: nil
                     )
+                    guard paramStatus == noErr else { continue }
 
                     if let pointer = parameterSetPointer {
                         frameData.append(contentsOf: nalStartCode)

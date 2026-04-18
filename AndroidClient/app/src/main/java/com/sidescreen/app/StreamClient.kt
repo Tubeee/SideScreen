@@ -290,7 +290,7 @@ class StreamClient(
     private fun sendCodecPreference() {
         try {
             val out = outputStream ?: return
-            out.write(byteArrayOf(3, preferredCodec.toByte())) // Type 3: codec preference
+            out.write(byteArrayOf(MSG_TYPE_CODEC_PREFERENCE, preferredCodec.toByte()))
             out.flush()
             diagLog("Sent codec preference: ${if (preferredCodec == CODEC_H264) "H.264" else "HEVC"}")
         } catch (e: Exception) {
@@ -301,6 +301,7 @@ class StreamClient(
     companion object {
         private const val TAG = "StreamClient"
         private const val MAX_FRAME_SIZE = 5 * 1024 * 1024 // 5MB
+        private const val MSG_TYPE_CODEC_PREFERENCE: Byte = 3
         const val CODEC_HEVC = 0
         const val CODEC_H264 = 1
     }

@@ -71,8 +71,6 @@ class MainActivity : AppCompatActivity() {
 
         DiagLog.init(applicationContext)
         prefs = PreferencesManager(this)
-        preferredCodecMimeType = choosePreferredCodecMimeType()
-        mainDiag("Preferred codec: ${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"}")
 
         // Allow rotation based on device sensor when not connected
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
@@ -88,6 +86,16 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        try {
+            preferredCodecMimeType = choosePreferredCodecMimeType()
+            mainDiag("Preferred codec: ${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"}")
+        } catch (e: IllegalStateException) {
+            mainDiag("Codec detection failed: ${e.message}")
+            showError("This device does not support required H.265 or H.264 decoding.")
+            finish()
+            return
+        }
 
         // Apply fullscreen mode immediately
         enableFullscreenMode()
@@ -894,10 +902,7 @@ class MainActivity : AppCompatActivity() {
         return when {
             supportsHevc -> MediaFormat.MIMETYPE_VIDEO_HEVC
             supportsAvc -> MediaFormat.MIMETYPE_VIDEO_AVC
-            else -> {
-                mainDiag("WARNING: No HEVC/AVC decoder detected, defaulting to HEVC")
-                MediaFormat.MIMETYPE_VIDEO_HEVC
-            }
+            else -> throw IllegalStateException("No HEVC/AVC decoder detected")
         }
     }
 
