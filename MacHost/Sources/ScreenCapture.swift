@@ -52,6 +52,7 @@ class ScreenCapture {
     private var currentQuality: String = "medium"
     private var currentGamingBoost: Bool = false
     private var currentFrameRate: Int = 60
+    private var currentCodec: VideoEncoder.Codec = .hevc
 
     // Encoding pipeline state (captured by frame handler closure)
     private var encodeQueue: DispatchQueue?
@@ -264,7 +265,7 @@ class ScreenCapture {
         let width = displayWidth
         let height = displayHeight
 
-        encoder = VideoEncoder(width: width, height: height, bitrateMbps: bitrateMbps, quality: quality, gamingBoost: gamingBoost, frameRate: frameRate)
+        encoder = VideoEncoder(width: width, height: height, bitrateMbps: bitrateMbps, quality: quality, gamingBoost: gamingBoost, frameRate: frameRate, codec: currentCodec)
         encoder?.onEncodedFrame = { [weak server] data, timestamp, isKeyframe in
             server?.sendFrame(data, timestamp: timestamp, isKeyframe: isKeyframe)
         }
@@ -471,6 +472,11 @@ class ScreenCapture {
 
     func updateEncoderSettings(bitrateMbps: Int, quality: String, gamingBoost: Bool) {
         encoder?.updateSettings(bitrateMbps: bitrateMbps, quality: quality, gamingBoost: gamingBoost)
+    }
+
+    func updateEncoderCodec(_ codec: VideoEncoder.Codec) {
+        currentCodec = codec
+        encoder?.updateCodec(codec)
     }
 
     // MARK: - Stop streaming

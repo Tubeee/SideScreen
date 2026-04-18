@@ -405,6 +405,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.handleTouch(x: x, y: y, action: action, pointerCount: pointerCount, x2: x2, y2: y2)
             }
 
+            streamingServer?.onCodecPreferenceReceived = { [weak self] codec in
+                guard let self = self else { return }
+                let targetCodec: VideoEncoder.Codec = switch codec {
+                case .hevc: .hevc
+                case .h264: .h264
+                }
+                debugLog("Client codec preference received: \(codec) -> switching encoder")
+                self.screenCapture?.updateEncoderCodec(targetCodec)
+            }
+
             streamingServer?.onStats = { [weak self] fps, mbps in
                 let captured = self
                 Task { @MainActor in

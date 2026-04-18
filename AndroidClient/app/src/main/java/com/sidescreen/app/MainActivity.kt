@@ -9,6 +9,8 @@ import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.hardware.usb.UsbManager
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -47,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var displayWidth = 0 // 0 = no config received yet
     private var displayHeight = 0 // 0 = no config received yet
     private var displayRotation = 0 // 0, 90, 180, 270 degrees
+    private var preferredCodecMimeType = MediaFormat.MIMETYPE_VIDEO_HEVC
     private var wakeLock: PowerManager.WakeLock? = null
     private var pingJob: kotlinx.coroutines.Job? = null
 
@@ -68,6 +71,8 @@ class MainActivity : AppCompatActivity() {
 
         DiagLog.init(applicationContext)
         prefs = PreferencesManager(this)
+        preferredCodecMimeType = choosePreferredCodecMimeType()
+        mainDiag("Preferred codec: ${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"}")
 
         // Allow rotation based on device sensor when not connected
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
@@ -678,13 +683,16 @@ class MainActivity : AppCompatActivity() {
                     @Suppress("DEPRECATION")
                     windowManager.defaultDisplay
                 }
-            videoDecoder = VideoDecoder(holder.surface, displayObj, displayWidth, displayHeight)
+            videoDecoder = VideoDecoder(holder.surface, displayObj, displayWidth, displayHeight, preferredCodecMimeType)
             // Wire up buffer release callback
             videoDecoder?.onFrameDecoded = { buffer ->
                 streamClient?.releaseBuffer(buffer)
             }
             mainDiag("Decoder initialized OK ${displayWidth}x$displayHeight, videoDecoder=$videoDecoder")
-            log("✅ Decoder initialized ${displayWidth}x$displayHeight (${displayObj?.refreshRate ?: 60f}Hz)")
+            log(
+                "✅ Decoder initialized ${displayWidth}x$displayHeight (${displayObj?.refreshRate ?: 60f}Hz, " +
+                    "${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"})",
+            )
         } catch (e: Exception) {
             mainDiag("Decoder init FAILED: ${e.message}")
             log("❌ Failed to initialize decoder: ${e.message}")
@@ -699,7 +707,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 log("Connecting to $host:$port...")
 
-                streamClient = StreamClient(host, port)
+                val codecPreference =
+                    if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) {
+                        StreamClient.CODEC_H264
+                    } else {
+                        StreamClient.CODEC_HEVC
+                    }
+                streamClient = StreamClient(host, port, codecPreference)
                 streamClient?.onFrameReceived = { frameData, frameSize, timestamp ->
                     val dec = videoDecoder
                     if (dec != null) {
@@ -872,6 +886,31 @@ class MainActivity : AppCompatActivity() {
     private fun stopPingTimer() {
         pingJob?.cancel()
         pingJob = null
+    }
+
+    private fun choosePreferredCodecMimeType(): String {
+        return when {
+            isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC) -> MediaFormat.MIMETYPE_VIDEO_HEVC
+            isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC) -> MediaFormat.MIMETYPE_VIDEO_AVC
+            else -> MediaFormat.MIMETYPE_VIDEO_HEVC
+        }
+    }
+
+    private fun isDecoderSupported(mimeType: String): Boolean {
+        return try {
+            val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
+            codecList.codecInfos.any { info ->
+                if (info.isEncoder) return@any false
+                try {
+                    info.getCapabilitiesForType(mimeType)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun cleanup() {

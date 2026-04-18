@@ -1,6 +1,11 @@
 import Foundation
 import Network
 
+enum ClientVideoCodec {
+    case hevc
+    case h264
+}
+
 class StreamingServer {
     private let port: UInt16
     private var listener: NWListener?
@@ -10,6 +15,7 @@ class StreamingServer {
     // Touch callback: (x1, y1, action, pointerCount, x2, y2)
     var onTouchEvent: ((Float, Float, Int, Int, Float, Float) -> Void)?
     var onStats: ((Double, Double) -> Void)?
+    var onCodecPreferenceReceived: ((ClientVideoCodec) -> Void)?
 
     private let frameQueue = DispatchQueue(label: "frameQueue", qos: .userInteractive)
     private let receiveQueue = DispatchQueue(label: "receiveQueue", qos: .userInteractive)
@@ -82,8 +88,8 @@ class StreamingServer {
             switch state {
             case .ready:
                 debugLog("Client connected - sending display config first")
-                self?.sendDisplaySize()
                 self?.connectionReady = true
+                self?.sendDisplaySize()
                 debugLog("Connection ready for frames")
                 self?.onClientConnected?()
                 self?.startReceivingTouch()
@@ -189,6 +195,13 @@ class StreamingServer {
                     pong.append(5) // Type: Pong
                     pong.append(clientTimestamp)
                     connection.send(content: pong, completion: .contentProcessed { _ in })
+                } else if msgType == 3 && data.count >= 2 {
+                    // Client codec preference: 0=HEVC, 1=H.264
+                    let codecId = data[1]
+                    let codec: ClientVideoCodec = (codecId == 1) ? .h264 : .hevc
+                    DispatchQueue.main.async {
+                        self.onCodecPreferenceReceived?(codec)
+                    }
                 }
             }
 
