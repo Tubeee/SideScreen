@@ -253,6 +253,8 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                         frameData.append(pointer, count: parameterSetSize)
                     }
                 }
+            } else {
+                debugLog("Failed to read HEVC parameter sets: \(status)")
             }
         case .h264:
             // H.264 keyframe needs SPS/PPS
@@ -284,6 +286,8 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
                         frameData.append(pointer, count: parameterSetSize)
                     }
                 }
+            } else {
+                debugLog("Failed to read H.264 parameter sets: \(status)")
             }
         }
     }

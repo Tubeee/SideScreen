@@ -897,11 +897,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun choosePreferredCodecMimeType(): String {
-        val supportsHevc = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC)
-        val supportsAvc = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC)
+        val supportsHEVC = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC)
+        val supportsH264 = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC)
         return when {
-            supportsHevc -> MediaFormat.MIMETYPE_VIDEO_HEVC
-            supportsAvc -> MediaFormat.MIMETYPE_VIDEO_AVC
+            supportsHEVC -> MediaFormat.MIMETYPE_VIDEO_HEVC
+            supportsH264 -> MediaFormat.MIMETYPE_VIDEO_AVC
             else -> throw IllegalStateException("No HEVC/AVC decoder detected")
         }
     }
