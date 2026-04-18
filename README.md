@@ -170,6 +170,7 @@ cd AndroidClient && ./gradlew assembleDebug
 | HiDPI (Retina) | On/Off | Off |
 | Gaming Boost | On/Off (1 Gbps, 120 Hz) | Off |
 | Touch Input | On/Off | On |
+| Custom ADB Path | Optional executable path override | Auto-detect |
 
 ---
 

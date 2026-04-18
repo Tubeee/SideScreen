@@ -349,6 +349,26 @@ struct SettingsView: View {
                                         .font(.system(size: 10))
                                         .foregroundColor(.secondary)
                                 }
+
+                                HStack {
+                                    Text("ADB Path")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+
+                                TextField("Auto-detect (optional override)", text: $settings.adbPath)
+                                    .textFieldStyle(.roundedBorder)
+
+                                if settings.adbPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("Leave blank to auto-detect ADB")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("Custom path will be used first for ADB reverse")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
 
@@ -869,6 +889,9 @@ class DisplaySettings: ObservableObject {
     @Published var port: UInt16 {
         didSet { save("port", Int(port)) }
     }
+    @Published var adbPath: String {
+        didSet { save("adbPath", adbPath) }
+    }
     @Published var rotation: Int {
         didSet { save("rotation", rotation) }
     }
@@ -905,6 +928,7 @@ class DisplaySettings: ObservableObject {
         self.quality = defaults.string(forKey: keyPrefix + "quality") ?? "ultralow"  // Default: fastest encoding
         self.gamingBoost = defaults.bool(forKey: keyPrefix + "gamingBoost")
         self.port = UInt16(defaults.object(forKey: keyPrefix + "port") as? Int ?? 8888)
+        self.adbPath = defaults.string(forKey: keyPrefix + "adbPath") ?? ""
         self.rotation = defaults.object(forKey: keyPrefix + "rotation") as? Int ?? 0
         self.showAllResolutions = defaults.bool(forKey: keyPrefix + "showAllResolutions")
         self.customWidth = defaults.object(forKey: keyPrefix + "customWidth") as? Int ?? 1920
@@ -972,7 +996,7 @@ class DisplaySettings: ObservableObject {
 
     func resetToDefaults() {
         let keys = ["resolution", "refreshRate", "hiDPI", "bitrate", "quality",
-                    "gamingBoost", "port", "rotation", "showAllResolutions",
+                    "gamingBoost", "port", "adbPath", "rotation", "showAllResolutions",
                     "customWidth", "customHeight", "touchEnabled"]
         for key in keys {
             defaults.removeObject(forKey: keyPrefix + key)
@@ -985,6 +1009,7 @@ class DisplaySettings: ObservableObject {
         quality = "ultralow"  // Default: fastest encoding
         gamingBoost = false
         port = 8888
+        adbPath = ""
         rotation = 0
         showAllResolutions = false
         customWidth = 1920

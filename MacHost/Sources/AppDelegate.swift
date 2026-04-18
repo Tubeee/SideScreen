@@ -219,9 +219,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Setup ADB reverse port forwarding for USB connection
     func setupADBReverse() async {
         let port = settings.port
+        let customAdbPath = settings.adbPath.trimmingCharacters(in: .whitespacesAndNewlines)
         print("🔌 Setting up ADB reverse for port \(port)...")
 
         await Task.detached(priority: .utility) {
+            let fileManager = FileManager.default
+            var adbPath: String?
+
+            if !customAdbPath.isEmpty {
+                let expandedCustomPath = NSString(string: customAdbPath).expandingTildeInPath
+                if fileManager.isExecutableFile(atPath: expandedCustomPath) {
+                    adbPath = expandedCustomPath
+                    print("📱 Using custom ADB path: \(expandedCustomPath)")
+                } else {
+                    print("⚠️  Custom ADB path is not executable: \(expandedCustomPath)")
+                    print("🔍 Falling back to automatic ADB discovery")
+                }
+            }
+
             // Try common adb paths
             let adbPaths = [
                 "/usr/local/bin/adb",
@@ -230,10 +245,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 "/Users/\(NSUserName())/Library/Android/sdk/platform-tools/adb"
             ]
 
-            var adbPath: String?
             for path in adbPaths {
+                if adbPath != nil { break }
                 let expandedPath = NSString(string: path).expandingTildeInPath
-                if FileManager.default.fileExists(atPath: expandedPath) {
+                if fileManager.isExecutableFile(atPath: expandedPath) {
                     adbPath = expandedPath
                     break
                 }
