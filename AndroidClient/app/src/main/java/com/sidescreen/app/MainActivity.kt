@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
 
         try {
             preferredCodecMimeType = choosePreferredCodecMimeType()
-            mainDiag("Preferred codec: ${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"}")
+            mainDiag("Preferred codec: ${codecName(preferredCodecMimeType)}")
         } catch (e: IllegalStateException) {
             mainDiag("Codec detection failed: ${e.message}")
             showError("This device does not support required H.265 or H.264 decoding.")
@@ -699,7 +699,7 @@ class MainActivity : AppCompatActivity() {
             mainDiag("Decoder initialized OK ${displayWidth}x$displayHeight, videoDecoder=$videoDecoder")
             log(
                 "✅ Decoder initialized ${displayWidth}x$displayHeight (${displayObj?.refreshRate ?: 60f}Hz, " +
-                    "${if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) "H.264" else "HEVC"})",
+                    "${codecName(preferredCodecMimeType)})",
             )
         } catch (e: Exception) {
             mainDiag("Decoder init FAILED: ${e.message}")
@@ -922,6 +922,13 @@ class MainActivity : AppCompatActivity() {
             false
         }
     }
+
+    private fun codecName(mimeType: String): String =
+        if (mimeType == MediaFormat.MIMETYPE_VIDEO_AVC) {
+            "H.264"
+        } else {
+            "HEVC"
+        }
 
     private fun cleanup() {
         try {

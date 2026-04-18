@@ -58,17 +58,26 @@ class VideoEncoder {
     private func setupCompressionSession() {
         var session: VTCompressionSession?
 
-        let codecType: CMVideoCodecType = switch codec {
-        case .hevc: kCMVideoCodecType_HEVC
-        case .h264: kCMVideoCodecType_H264
+        let codecType: CMVideoCodecType
+        switch codec {
+        case .hevc:
+            codecType = kCMVideoCodecType_HEVC
+        case .h264:
+            codecType = kCMVideoCodecType_H264
         }
-        let profileLevel: CFString = switch codec {
-        case .hevc: kVTProfileLevel_HEVC_Main_AutoLevel
-        case .h264: kVTProfileLevel_H264_High_AutoLevel
+        let profileLevel: CFString
+        switch codec {
+        case .hevc:
+            profileLevel = kVTProfileLevel_HEVC_Main_AutoLevel
+        case .h264:
+            profileLevel = kVTProfileLevel_H264_High_AutoLevel
         }
-        let codecLabel: String = switch codec {
-        case .hevc: "H.265"
-        case .h264: "H.264"
+        let codecLabel: String
+        switch codec {
+        case .hevc:
+            codecLabel = "H.265"
+        case .h264:
+            codecLabel = "H.264"
         }
 
         let status = VTCompressionSessionCreate(
