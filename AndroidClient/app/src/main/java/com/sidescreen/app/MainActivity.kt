@@ -889,10 +889,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun choosePreferredCodecMimeType(): String {
+        val supportsHevc = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC)
+        val supportsAvc = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC)
         return when {
-            isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC) -> MediaFormat.MIMETYPE_VIDEO_HEVC
-            isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC) -> MediaFormat.MIMETYPE_VIDEO_AVC
-            else -> MediaFormat.MIMETYPE_VIDEO_HEVC
+            supportsHevc -> MediaFormat.MIMETYPE_VIDEO_HEVC
+            supportsAvc -> MediaFormat.MIMETYPE_VIDEO_AVC
+            else -> {
+                mainDiag("WARNING: No HEVC/AVC decoder detected, defaulting to HEVC")
+                MediaFormat.MIMETYPE_VIDEO_HEVC
+            }
         }
     }
 

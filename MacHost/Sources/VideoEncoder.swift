@@ -53,9 +53,7 @@ class VideoEncoder {
         setupCompressionSession()
     }
 
-    func currentCodec() -> Codec {
-        codec
-    }
+    var currentCodec: Codec { codec }
 
     private func setupCompressionSession() {
         var session: VTCompressionSession?
@@ -224,7 +222,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
     var frameData = Data(capacity: estimatedSize)
 
     if isKeyframe, let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) {
-        switch encoder.currentCodec() {
+        switch encoder.currentCodec {
         case .hevc:
             // H.265 keyframe needs VPS/SPS/PPS
             var parameterSetCount: Int = 0

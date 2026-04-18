@@ -1,10 +1,7 @@
 import Foundation
 import Network
 
-enum ClientVideoCodec {
-    case hevc
-    case h264
-}
+typealias ClientVideoCodec = VideoEncoder.Codec
 
 class StreamingServer {
     private let port: UInt16

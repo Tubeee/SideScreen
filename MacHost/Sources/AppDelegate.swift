@@ -407,12 +407,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             streamingServer?.onCodecPreferenceReceived = { [weak self] codec in
                 guard let self = self else { return }
-                let targetCodec: VideoEncoder.Codec = switch codec {
-                case .hevc: .hevc
-                case .h264: .h264
-                }
                 debugLog("Client codec preference received: \(codec) -> switching encoder")
-                self.screenCapture?.updateEncoderCodec(targetCodec)
+                self.screenCapture?.updateEncoderCodec(codec)
             }
 
             streamingServer?.onStats = { [weak self] fps, mbps in
