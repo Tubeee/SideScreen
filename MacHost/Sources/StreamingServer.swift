@@ -88,8 +88,8 @@ class StreamingServer {
             switch state {
             case .ready:
                 debugLog("Client connected - sending display config first")
-                self?.connectionReady = true
                 self?.sendDisplaySize()
+                self?.connectionReady = true
                 debugLog("Connection ready for frames")
                 self?.onClientConnected?()
                 self?.startReceivingTouch()
