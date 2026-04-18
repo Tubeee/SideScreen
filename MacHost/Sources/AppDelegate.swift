@@ -246,7 +246,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ]
 
             for path in adbPaths {
-                if adbPath != nil { break }
                 let expandedPath = NSString(string: path).expandingTildeInPath
                 if fileManager.isExecutableFile(atPath: expandedPath) {
                     adbPath = expandedPath
