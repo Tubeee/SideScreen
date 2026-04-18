@@ -113,11 +113,11 @@ class VideoDecoder(
         codec.setCallback(callback, decoderHandler)
 
         val format =
-                MediaFormat.createVideoFormat(
-                    codecMimeType,
-                    currentWidth,
-                    currentHeight,
-                )
+            MediaFormat.createVideoFormat(
+                codecMimeType,
+                currentWidth,
+                currentHeight,
+            )
 
         var configured = false
 

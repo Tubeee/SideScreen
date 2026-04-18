@@ -16,7 +16,7 @@ class VideoEncoder {
     private var quality: String = "medium"
     private var gamingBoost: Bool = false
     private var frameRate: Int = 60
-    fileprivate var codec: Codec = .hevc
+    private var codec: Codec = .hevc
 
     init(width: Int, height: Int, bitrateMbps: Int = 20, quality: String = "ultralow", gamingBoost: Bool = false, frameRate: Int = 60, codec: Codec = .hevc) {
         self.width = width
@@ -51,6 +51,10 @@ class VideoEncoder {
             VTCompressionSessionInvalidate(session)
         }
         setupCompressionSession()
+    }
+
+    func currentCodec() -> Codec {
+        codec
     }
 
     private func setupCompressionSession() {
@@ -220,7 +224,7 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
     var frameData = Data(capacity: estimatedSize)
 
     if isKeyframe, let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) {
-        switch encoder.codec {
+        switch encoder.currentCodec() {
         case .hevc:
             // H.265 keyframe needs VPS/SPS/PPS
             var parameterSetCount: Int = 0
