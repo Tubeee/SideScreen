@@ -41,7 +41,7 @@
 
 Side Screen brings true second-display functionality to your Android tablet over USB-C, something macOS doesn't natively support.
 
-While Apple's Sidecar only works with iPads, millions of Android tablets sit unused as potential workstations. Side Screen bridges that gap with hardware-accelerated H.265 streaming, sub-16ms pipeline latency, and full touch input — making your tablet feel like a real monitor, not a laggy mirror.
+While Apple's Sidecar only works with iPads, millions of Android tablets sit unused as potential workstations. Side Screen bridges that gap with hardware-accelerated H.265/H.264 streaming, sub-16ms pipeline latency, and full touch input — making your tablet feel like a real monitor, not a laggy mirror.
 
 Built entirely open-source, Side Screen is designed to be fast, lightweight, and seamlessly integrated.
 
@@ -63,7 +63,7 @@ Create a true virtual display on your Mac. Drag windows to your tablet like a re
 
 ### Ultra-Low Latency
 
-Hardware-accelerated H.265 encoding on Mac and decoding on Android. Async pipeline architecture delivers frames in under 30ms.
+Hardware-accelerated H.265 encoding on Mac and decoding on Android, with H.264 fallback support. Async pipeline architecture delivers frames in under 30ms.
 
 <div align="center">
   <img src="resources/screenshots/android_performance.png" alt="Low Latency Streaming with Stats Overlay" width="700"/>
@@ -102,7 +102,7 @@ Configure resolution (up to 4K/8K), frame rate (30–120 FPS), bitrate (20–500
 | | macOS Host | Android Client |
 |---|---|---|
 | **OS** | macOS 14 (Sonoma)+ | Android 8.0 (API 26)+ |
-| **Hardware** | Apple Silicon or Intel | H.265 hardware decoder |
+| **Hardware** | Apple Silicon or Intel | H.265 or H.264 hardware decoder |
 | **Connection** | USB-C port | USB-C cable |
 
 ---
@@ -195,7 +195,7 @@ The Mac app sets up `adb reverse` automatically when streaming starts. If it sti
 <summary><strong>High latency or stuttering</strong></summary>
 
 - Lower resolution or frame rate
-- Ensure H.265 hardware codec support on your device
+- Ensure H.265 or H.264 hardware codec support on your device
 - Use a high-quality USB-C cable (not charge-only)
 </details>
 

@@ -3,6 +3,11 @@ import VideoToolbox
 import CoreMedia
 
 class VideoEncoder {
+    enum Codec {
+        case hevc
+        case h264
+    }
+
     private var compressionSession: VTCompressionSession?
     var onEncodedFrame: ((Data, UInt64, Bool) -> Void)?  // data, timestamp, isKeyframe
     private var width: Int
@@ -11,13 +16,16 @@ class VideoEncoder {
     private var quality: String = "medium"
     private var gamingBoost: Bool = false
     private var frameRate: Int = 60
-    init(width: Int, height: Int, bitrateMbps: Int = 20, quality: String = "ultralow", gamingBoost: Bool = false, frameRate: Int = 60) {
+    private var codec: Codec = .hevc
+
+    init(width: Int, height: Int, bitrateMbps: Int = 20, quality: String = "ultralow", gamingBoost: Bool = false, frameRate: Int = 60, codec: Codec = .hevc) {
         self.width = width
         self.height = height
         self.bitrateMbps = gamingBoost ? 50 : bitrateMbps
         self.quality = gamingBoost ? "ultralow" : quality
         self.gamingBoost = gamingBoost
         self.frameRate = frameRate
+        self.codec = codec
         setupCompressionSession()
     }
 
@@ -34,14 +42,49 @@ class VideoEncoder {
         setupCompressionSession()
     }
 
+    func updateCodec(_ codec: Codec) {
+        guard self.codec != codec else { return }
+        self.codec = codec
+
+        if let session = compressionSession {
+            VTCompressionSessionCompleteFrames(session, untilPresentationTimeStamp: .invalid)
+            VTCompressionSessionInvalidate(session)
+        }
+        setupCompressionSession()
+    }
+
+    var currentCodec: Codec { codec }
+
     private func setupCompressionSession() {
         var session: VTCompressionSession?
+
+        let codecType: CMVideoCodecType
+        switch codec {
+        case .hevc:
+            codecType = kCMVideoCodecType_HEVC
+        case .h264:
+            codecType = kCMVideoCodecType_H264
+        }
+        let profileLevel: CFString
+        switch codec {
+        case .hevc:
+            profileLevel = kVTProfileLevel_HEVC_Main_AutoLevel
+        case .h264:
+            profileLevel = kVTProfileLevel_H264_High_AutoLevel
+        }
+        let codecLabel: String
+        switch codec {
+        case .hevc:
+            codecLabel = "H.265"
+        case .h264:
+            codecLabel = "H.264"
+        }
 
         let status = VTCompressionSessionCreate(
             allocator: kCFAllocatorDefault,
             width: Int32(width),
             height: Int32(height),
-            codecType: kCMVideoCodecType_HEVC, // H.265
+            codecType: codecType,
             encoderSpecification: [kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder: true] as CFDictionary,
             imageBufferAttributes: nil,
             compressedDataAllocator: nil,
@@ -59,7 +102,7 @@ class VideoEncoder {
 
         // Ultra-low latency config for real-time streaming
         VTSessionSetProperty(session, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
-        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_HEVC_Main_AutoLevel)
+        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: profileLevel)
 
         // Dynamic bitrate - remove strict rate limiting for smoother streaming
         // All-intra needs higher bitrate for text sharpness
@@ -106,7 +149,7 @@ class VideoEncoder {
         VTCompressionSessionPrepareToEncodeFrames(session)
 
         let mode = gamingBoost ? "🎮 GAMING BOOST" : quality.uppercased()
-        debugLog("VideoToolbox encoder configured (H.265, \(bitrateMbps)Mbps, \(frameRate)fps, \(mode))")
+        debugLog("VideoToolbox encoder configured (\(codecLabel), \(bitrateMbps)Mbps, \(frameRate)fps, \(mode))")
     }
 
     func encode(pixelBuffer: CVPixelBuffer, presentationTimeStamp: CMTime) {
@@ -187,21 +230,73 @@ private let encodingOutputCallback: VTCompressionOutputCallback = { (outputCallb
     let estimatedSize = totalLength + (isKeyframe ? 256 : 0) + 32
     var frameData = Data(capacity: estimatedSize)
 
-    if isKeyframe {
-        if let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) {
-            // Get parameter sets (SPS, PPS, VPS for H.265)
+    if isKeyframe, let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) {
+        switch encoder.currentCodec {
+        case .hevc:
+            // H.265 keyframe needs VPS/SPS/PPS
             var parameterSetCount: Int = 0
-            CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(formatDescription, parameterSetIndex: 0, parameterSetPointerOut: nil, parameterSetSizeOut: nil, parameterSetCountOut: &parameterSetCount, nalUnitHeaderLengthOut: nil)
+            let status = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+                formatDescription,
+                parameterSetIndex: 0,
+                parameterSetPointerOut: nil,
+                parameterSetSizeOut: nil,
+                parameterSetCountOut: &parameterSetCount,
+                nalUnitHeaderLengthOut: nil
+            )
+            if status == noErr {
+                for i in 0..<parameterSetCount {
+                    var parameterSetPointer: UnsafePointer<UInt8>?
+                    var parameterSetSize: Int = 0
+                    let paramStatus = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+                        formatDescription,
+                        parameterSetIndex: i,
+                        parameterSetPointerOut: &parameterSetPointer,
+                        parameterSetSizeOut: &parameterSetSize,
+                        parameterSetCountOut: nil,
+                        nalUnitHeaderLengthOut: nil
+                    )
+                    guard paramStatus == noErr else { continue }
 
-            for i in 0..<parameterSetCount {
-                var parameterSetPointer: UnsafePointer<UInt8>?
-                var parameterSetSize: Int = 0
-                CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(formatDescription, parameterSetIndex: i, parameterSetPointerOut: &parameterSetPointer, parameterSetSizeOut: &parameterSetSize, parameterSetCountOut: nil, nalUnitHeaderLengthOut: nil)
-
-                if let pointer = parameterSetPointer {
-                    frameData.append(contentsOf: nalStartCode)
-                    frameData.append(pointer, count: parameterSetSize)
+                    if let pointer = parameterSetPointer {
+                        frameData.append(contentsOf: nalStartCode)
+                        frameData.append(pointer, count: parameterSetSize)
+                    }
                 }
+            } else {
+                debugLog("Failed to read HEVC parameter sets: \(status)")
+            }
+        case .h264:
+            // H.264 keyframe needs SPS/PPS
+            var parameterSetCount: Int = 0
+            let status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                formatDescription,
+                parameterSetIndex: 0,
+                parameterSetPointerOut: nil,
+                parameterSetSizeOut: nil,
+                parameterSetCountOut: &parameterSetCount,
+                nalUnitHeaderLengthOut: nil
+            )
+            if status == noErr {
+                for i in 0..<parameterSetCount {
+                    var parameterSetPointer: UnsafePointer<UInt8>?
+                    var parameterSetSize: Int = 0
+                    let paramStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                        formatDescription,
+                        parameterSetIndex: i,
+                        parameterSetPointerOut: &parameterSetPointer,
+                        parameterSetSizeOut: &parameterSetSize,
+                        parameterSetCountOut: nil,
+                        nalUnitHeaderLengthOut: nil
+                    )
+                    guard paramStatus == noErr else { continue }
+
+                    if let pointer = parameterSetPointer {
+                        frameData.append(contentsOf: nalStartCode)
+                        frameData.append(pointer, count: parameterSetSize)
+                    }
+                }
+            } else {
+                debugLog("Failed to read H.264 parameter sets: \(status)")
             }
         }
     }

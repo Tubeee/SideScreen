@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 class StreamClient(
     private val host: String,
     private val port: Int,
+    private val preferredCodec: Int = CODEC_HEVC,
 ) {
     private var socket: Socket? = null
     private var inputStream: DataInputStream? = null
@@ -99,6 +100,7 @@ class StreamClient(
                 outputStream = java.io.DataOutputStream(socket?.getOutputStream())
                 isConnected = true
 
+                sendCodecPreference()
                 diagLog("Connected to $host:$port")
                 onConnectionStatus?.invoke(true)
 
@@ -285,8 +287,22 @@ class StreamClient(
 
     private fun diagLog(msg: String) = DiagLog.log("SC", msg)
 
+    private fun sendCodecPreference() {
+        try {
+            val out = outputStream ?: return
+            out.write(byteArrayOf(MSG_TYPE_CODEC_PREFERENCE, preferredCodec.toByte()))
+            out.flush()
+            diagLog("Sent codec preference: ${if (preferredCodec == CODEC_H264) "H.264" else "HEVC"}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send codec preference", e)
+        }
+    }
+
     companion object {
         private const val TAG = "StreamClient"
         private const val MAX_FRAME_SIZE = 5 * 1024 * 1024 // 5MB
+        private const val MSG_TYPE_CODEC_PREFERENCE: Byte = 3
+        const val CODEC_HEVC = 0
+        const val CODEC_H264 = 1
     }
 }

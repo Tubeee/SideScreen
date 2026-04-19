@@ -9,6 +9,8 @@ import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.hardware.usb.UsbManager
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -47,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var displayWidth = 0 // 0 = no config received yet
     private var displayHeight = 0 // 0 = no config received yet
     private var displayRotation = 0 // 0, 90, 180, 270 degrees
+    private var preferredCodecMimeType = MediaFormat.MIMETYPE_VIDEO_HEVC
     private var wakeLock: PowerManager.WakeLock? = null
     private var pingJob: kotlinx.coroutines.Job? = null
 
@@ -83,6 +86,16 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        try {
+            preferredCodecMimeType = choosePreferredCodecMimeType()
+            mainDiag("Preferred codec: ${codecName(preferredCodecMimeType)}")
+        } catch (e: IllegalStateException) {
+            mainDiag("Codec detection failed: ${e.message}")
+            showError("This device does not support required H.265 or H.264 decoding.")
+            finish()
+            return
+        }
 
         // Apply fullscreen mode immediately
         enableFullscreenMode()
@@ -678,13 +691,16 @@ class MainActivity : AppCompatActivity() {
                     @Suppress("DEPRECATION")
                     windowManager.defaultDisplay
                 }
-            videoDecoder = VideoDecoder(holder.surface, displayObj, displayWidth, displayHeight)
+            videoDecoder = VideoDecoder(holder.surface, displayObj, displayWidth, displayHeight, preferredCodecMimeType)
             // Wire up buffer release callback
             videoDecoder?.onFrameDecoded = { buffer ->
                 streamClient?.releaseBuffer(buffer)
             }
             mainDiag("Decoder initialized OK ${displayWidth}x$displayHeight, videoDecoder=$videoDecoder")
-            log("✅ Decoder initialized ${displayWidth}x$displayHeight (${displayObj?.refreshRate ?: 60f}Hz)")
+            log(
+                "✅ Decoder initialized ${displayWidth}x$displayHeight (${displayObj?.refreshRate ?: 60f}Hz, " +
+                    "${codecName(preferredCodecMimeType)})",
+            )
         } catch (e: Exception) {
             mainDiag("Decoder init FAILED: ${e.message}")
             log("❌ Failed to initialize decoder: ${e.message}")
@@ -699,7 +715,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 log("Connecting to $host:$port...")
 
-                streamClient = StreamClient(host, port)
+                val codecPreference =
+                    if (preferredCodecMimeType == MediaFormat.MIMETYPE_VIDEO_AVC) {
+                        StreamClient.CODEC_H264
+                    } else {
+                        StreamClient.CODEC_HEVC
+                    }
+                streamClient = StreamClient(host, port, codecPreference)
                 streamClient?.onFrameReceived = { frameData, frameSize, timestamp ->
                     val dec = videoDecoder
                     if (dec != null) {
@@ -873,6 +895,40 @@ class MainActivity : AppCompatActivity() {
         pingJob?.cancel()
         pingJob = null
     }
+
+    private fun choosePreferredCodecMimeType(): String {
+        val supportsHEVC = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_HEVC)
+        val supportsH264 = isDecoderSupported(MediaFormat.MIMETYPE_VIDEO_AVC)
+        return when {
+            supportsHEVC -> MediaFormat.MIMETYPE_VIDEO_HEVC
+            supportsH264 -> MediaFormat.MIMETYPE_VIDEO_AVC
+            else -> throw IllegalStateException("No HEVC/AVC decoder detected")
+        }
+    }
+
+    private fun isDecoderSupported(mimeType: String): Boolean {
+        return try {
+            val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
+            codecList.codecInfos.any { info ->
+                if (info.isEncoder) return@any false
+                try {
+                    info.getCapabilitiesForType(mimeType)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun codecName(mimeType: String): String =
+        if (mimeType == MediaFormat.MIMETYPE_VIDEO_AVC) {
+            "H.264"
+        } else {
+            "HEVC"
+        }
 
     private fun cleanup() {
         try {
